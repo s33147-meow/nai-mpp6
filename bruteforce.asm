@@ -2,6 +2,7 @@ global find_best_set
 
 extern printf
 
+; we make all of those external to make the entire program more readable, saving on reading the arguments etc
 extern item_count   ; u16
 extern capacity     ; u16
 extern sizes        ; u16 [16 * item_count]
@@ -18,6 +19,7 @@ find_best_set:
     push rbp
     mov rbp, rsp
 
+; unsure which registers to preserve. have faced issues using rbx, no matter what i did with it
     push rax
     push r8
     push r9
@@ -26,7 +28,8 @@ find_best_set:
     ; rdi - i_min ( also i current )
     ; rsi - i_max
     ; rdx - output (16 * u64 + 16 * u16)
-    ; 32 bytes for vector unrolling
+
+    ; 32 bytes for vector unrolling, also store rdx's pointer
     sub rsp, 64
     mov [ rbp - 8 ], rdx
 
@@ -60,10 +63,10 @@ find_best_set:
     vmovdqu ymm3, [ r9 + rcx ] ; ymm3 - current_size
     vpaddw ymm1, ymm3   ; total_size  += current_size
 
-    vpcmpgtw ymm3, ymm1, ymm0
+    vpcmpgtw ymm3, ymm1, ymm0 ; check if all the backpacks are filled
     vpmovmskb eax, ymm3
     cmp eax, 0xFFFFFFFF
-    je .writeend ; maybe can jump further?? (skip more)
+    je .writeend
 
 
     vmovdqu ymm3, [ r8 + rcx ] ; ymm3 - current_value
@@ -120,7 +123,7 @@ find_best_set:
     ; spread out the ymm4 (max value) vector
     mov rcx, [ rbp - 8 ]
 
-    sub rsp, 64
+    sub rsp, 64 ; ugly copy (copy dwords as qwords)
     vmovdqu [ rbp - 64 ], ymm4
 
     mov rax, [ rbp - 64 ]
