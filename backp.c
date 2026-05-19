@@ -156,9 +156,57 @@ ThreadResults main_brute() {
 	return best_results;
 }
 
+typedef struct {
+    f32 ratio;
+    i32 item_id;
+} BackpackItem;
+
+int compare_items(const void* arg1, const void* arg2) {
+    BackpackItem* a = (BackpackItem*)arg1;
+    BackpackItem* b = (BackpackItem*)arg2;
+    return (a->ratio < b->ratio) - (a->ratio > b->ratio);
+}
 
 ThreadResults main_heur() {
-	return (ThreadResults){0};
+    ThreadResults results = {0};
+
+    for(u8 j = 0; j < backpack_count; j++) {
+        BackpackItem items[item_count];
+
+        for(u8 i = 0; i < item_count; i++) {
+            items[i] = (BackpackItem) {
+                .item_id = i,
+                .ratio = (f32)values[i][j] / sizes[i][j]
+            };
+        }
+
+        qsort(items, item_count, sizeof(BackpackItem), compare_items);
+
+        u32 current_size = 0;
+        u32 current_value = 0;
+        u64 current_set = 0;
+
+        for(u8 i = 0; i < item_count; i++) {
+            u32 id = items[i].item_id;
+
+            if(current_size + sizes[i][j] <= capacity) {
+                current_size += sizes[i][j];
+                current_value += values[i][j];
+                current_set |= 1 << i;
+            }
+        }
+
+        results.subsets[j] = current_set;
+        results.values[j] = current_value;
+
+        // ilog("Backpack %d:\n", j);
+        // for(u8 i = 0; i < item_count; i++) {
+        //     ilog("\t%d: %f\n", items[i].item_id, items[i].ratio);
+        // }
+    }
+
+    results.complete = true;
+	return results;
 }
 
 i32 main(i32 argc, cstr* argv) {
@@ -200,7 +248,13 @@ i32 main(i32 argc, cstr* argv) {
 #endif
 	for(i8 j = 0; j < backpack_count; j++) {
 		ilog("Backpack %2d: =======================\n", j + 1);
-		ilog("%.*lb \n", item_count, results.subsets[j]);
-		ilog("Value = %d\n", results.values[j]);
+		// ilog("%.*lb \n", item_count, results.subsets[j]);
+		ilog("Total value = %d; Item count = %d\n", results.values[j], __builtin_popcount(results.subsets[j]));
+
+        for(u8 i = 0; i < item_count; i++) {
+            if((1 << i) & results.subsets[j]) {
+                ilog("\t%2u (size = %3u, value = %3u)\n", i, sizes[i][j], values[i][j]);
+            }
+        }
 	}
 }
