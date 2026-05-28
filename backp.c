@@ -164,7 +164,7 @@ typedef struct {
 int compare_items(const void* arg1, const void* arg2) {
     BackpackItem* a = (BackpackItem*)arg1;
     BackpackItem* b = (BackpackItem*)arg2;
-    return (a->ratio < b->ratio) - (a->ratio > b->ratio);
+    return ((a->ratio < b->ratio) - (a->ratio > b->ratio));
 }
 
 ThreadResults main_heur() {
@@ -186,13 +186,18 @@ ThreadResults main_heur() {
         u32 current_value = 0;
         u64 current_set = 0;
 
+
         for(u8 i = 0; i < item_count; i++) {
             u32 id = items[i].item_id;
 
-            if(current_size + sizes[i][j] <= capacity) {
-                current_size += sizes[i][j];
-                current_value += values[i][j];
-                current_set |= 1 << i;
+			if(current_set & 1 << id) continue;
+
+            if(current_size + sizes[id][j] <= capacity) {
+                current_size += sizes[id][j];
+                current_value += values[id][j];
+                current_set |= 1 << id;
+
+				i = 0;
             }
         }
 
